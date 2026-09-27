@@ -1,0 +1,325 @@
+{
+  "root": "/Users/smanpathak/code/personal/asynchronous-event-processing-api-gateway-sqs-cdk",
+  "files_scanned": 17,
+  "skipped_files": 6,
+  "offline": true,
+  "assessment_boundaries": [
+    "The scanner analyzes eligible local text files only. It excludes common secret files, credential directories, generated artifacts, VCS metadata, and files containing likely credential material.",
+    "Static analysis cannot determine production traffic, deployment topology, runtime configuration, external-system behavior, business invariants, or operational procedures unless represented in scanned files.",
+    "SQS detection uses Python syntax trees (ASTs) to recognize boto3 and AWS CDK calls with locally resolved imports and bindings. It does not resolve cross-file aliases, runtime factories, control flow, instance attributes, or configuration passed through variables or **kwargs. Other languages and unparseable Python are outside these rules' coverage.",
+    "Queue/Lambda timeout correlation supports Python CDK Queue and Function constructs and explicit event-source links in the same file. Numeric comparisons require literal Duration.seconds, minutes, or hours values. Missing defaults, dynamic expressions, conditional resource definitions, and deployed settings are not inferred. Unbound configurations are review candidates, not evidence that the resources communicate.",
+    "DynamoDB detection uses text-pattern heuristics, without resolving call receivers or proving that matched controls apply to a write. A missing finding does not establish workload safety.",
+    "Processing paths require an explicit Python Lambda runtime and resolve literal CDK Code.from_asset and handler settings against eligible files inside the scan root. Only direct boto3 DynamoDB PutItem calls in the configured handler are linked; helper calls, dynamic assets, dependency injection, and deployed behavior remain unresolved. Omitted queue FIFO settings and Lambda timeouts are not inferred."
+  ],
+  "findings": [
+    {
+      "rule_id": "AWS-DDB-001",
+      "title": "DynamoDB PutItem replay and overwrite behavior requires validation",
+      "category": "Data",
+      "severity": "medium",
+      "confidence": "low",
+      "detection": "Text-pattern heuristic",
+      "rule_source": "invariant.rules.dynamodb.AWS_DDB_001",
+      "summary": "A DynamoDB-style PutItem call was detected. If events can be retried, duplicated, or arrive out of order, validate replay behavior and whether a write using an existing primary key may replace the stored item. Calls that generate new keys instead require review for unintended additional records. This is a migration review question; intended ordering and idempotency design are not established.",
+      "observed_behavior": "The scanner matched DynamoDB-style write calls in source text. Conditional-write or version-related text was also matched.",
+      "source_behavior": "PutItem creates an item or replaces the item with the same primary key; conditional expressions can restrict the write. Different keys can create additional items. A call alone does not establish the business rule.",
+      "potential_invariant": "A duplicate or older logical event must not replace newer intended state unless last-writer-wins is the explicit business rule. Reprocessing with a new key should not create an unintended additional record.",
+      "target_question": "If Azure Cosmos DB is selected as the target datastore, how will its design preserve correctness for concurrent, duplicate, retried, or reordered writes?",
+      "why_it_matters": "Data persistence does not automatically preserve a workload's source conflict model.",
+      "recommendation": [
+        "Establish whether item keys represent a logical event, an entity, or a new record per processing pass.",
+        "Write business invariants explicitly.",
+        "Classify updates as additive, absolute, or versioned.",
+        "Choose optimistic concurrency, transaction, or serialization strategy.",
+        "Align partition design with transaction boundaries."
+      ],
+      "validation_scenario": [
+        "Send overlapping updates for the same entity.",
+        "Inject retries and duplicate delivery.",
+        "Replay an older update after a newer update.",
+        "Verify invariants."
+      ],
+      "limitations": "Matched writes do not establish the full data model, conflict rules, or transaction boundaries.",
+      "evidence": [
+        {
+          "path": "error_handling/main.py",
+          "line": 32,
+          "snippet": "dynamodb.put_item(",
+          "kind": "ddb_write_put"
+        },
+        {
+          "path": "event_processing/main.py",
+          "line": 72,
+          "snippet": "dynamodb.put_item(",
+          "kind": "ddb_write_put"
+        },
+        {
+          "path": ".projen/deps.json",
+          "line": 41,
+          "snippet": "\"version\": \"0.67.3\",",
+          "kind": "ddb_version"
+        },
+        {
+          "path": ".projen/deps.json",
+          "line": 58,
+          "snippet": "\"version\": \"2.61.0\",",
+          "kind": "ddb_version"
+        },
+        {
+          "path": ".projen/deps.json",
+          "line": 63,
+          "snippet": "\"version\": \"^10.0.5\",",
+          "kind": "ddb_version"
+        },
+        {
+          "path": ".projen/deps.json",
+          "line": 68,
+          "snippet": "\"version\": \"6.2.1\",",
+          "kind": "ddb_version"
+        }
+      ]
+    },
+    {
+      "rule_id": "AWS-SQS-001",
+      "title": "Review SQS consumers for duplicate-delivery safety",
+      "category": "Messaging",
+      "severity": "medium",
+      "confidence": "low",
+      "detection": "Python AST",
+      "rule_source": "invariant.rules.sqs.AWS_SQS_001",
+      "summary": "SQS consumption patterns were detected. Because SQS can redeliver messages, review consumers for idempotency when processing can produce persistent state changes or external side effects.",
+      "observed_behavior": "The scanner detected SQS receive calls or SQS event-source configuration. Idempotency mechanisms and business effects are not analyzed by this rule.",
+      "source_behavior": "SQS standard queues use at-least-once delivery. Messages that are not deleted before visibility expires can become available again.",
+      "potential_invariant": "Reprocessing the same logical message should not create an unintended duplicate business effect.",
+      "target_question": "For Azure Service Bus, how will the consumer identify and safely handle a message redelivered after a partial failure?",
+      "why_it_matters": "At-least-once delivery can repeat work after transient failure and create duplicate writes or external side effects.",
+      "recommendation": [
+        "Attach a stable event identifier to each logical work item.",
+        "Use durable idempotency or deduplication.",
+        "Document whether operations are additive, absolute-state-based, or versioned."
+      ],
+      "validation_scenario": [
+        "Persist a business-state change.",
+        "Force handler failure before message completion.",
+        "Allow re-delivery.",
+        "Verify duplicate processing does not create an unintended duplicate business effect."
+      ],
+      "limitations": "This rule does not establish missing idempotency controls, ordering of business writes and message deletion, or runtime retry policy.",
+      "evidence": [
+        {
+          "path": "event_processing/main.py",
+          "line": 93,
+          "snippet": "response = sqs_client.receive_message(",
+          "kind": "sqs_receive"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 312,
+          "snippet": "SqsEventSource(self.__failed_jobs_dead_letter_queue))",
+          "kind": "sqs_event_source"
+        },
+        {
+          "path": "event_processing/main.py",
+          "line": 104,
+          "snippet": "sqs_client.delete_message(",
+          "kind": "sqs_delete"
+        }
+      ]
+    },
+    {
+      "rule_id": "AWS-SQS-002",
+      "title": "Explicit SQS visibility timeout requires target lock-duration mapping",
+      "category": "Messaging",
+      "severity": "medium",
+      "confidence": "medium",
+      "detection": "Python AST",
+      "rule_source": "invariant.rules.sqs.AWS_SQS_002",
+      "summary": "Explicit SQS visibility-timeout configuration was detected. If Azure Service Bus is selected, map this timing behavior to lock duration, lock renewal, retry policy, and the target consumer's processing budget. The setting alone does not establish sufficient or insufficient time.",
+      "observed_behavior": "The scanner found explicit visibility-timeout arguments or literal attributes in recognized SQS calls. The evidence below preserves the configured expressions; runtime values are not evaluated.",
+      "source_behavior": "After receipt, SQS hides a message for the visibility period. If it is not deleted before that period expires, it can be received again. Visibility does not guarantee that duplicates cannot occur during the period. A timeout of zero makes the message immediately visible.",
+      "potential_invariant": "If the workload requires exclusive processing, a message should not be processed concurrently while its original consumer is still legitimately processing it. Any overlap should preserve business correctness.",
+      "target_question": "Will Azure Service Bus lock duration and renewal cover normal and degraded processing?",
+      "why_it_matters": "Lock expiry can make a message available again and cause concurrent or duplicate processing.",
+      "recommendation": [
+        "Measure normal and degraded processing duration.",
+        "Include retries and dependency latency in timing budgets.",
+        "Configure and test lock duration and renewal."
+      ],
+      "validation_scenario": [
+        "Delay a handler past the target lock duration.",
+        "Observe whether the message becomes available again.",
+        "Verify concurrent handling preserves business invariants."
+      ],
+      "limitations": "An explicit timeout does not establish that its duration is sufficient or that exclusive processing is required.",
+      "evidence": [
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 144,
+          "snippet": "visibility_timeout=Duration.seconds(error_handling_timeout)",
+          "kind": "visibility_timeout"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 249,
+          "snippet": "visibility_timeout=Duration.seconds(event_processing_timeout)",
+          "kind": "visibility_timeout"
+        }
+      ]
+    },
+    {
+      "rule_id": "AWS-SQS-005",
+      "title": "Queue and consumer timeout relationship requires operational validation",
+      "category": "Messaging",
+      "severity": "informational",
+      "confidence": "low",
+      "detection": "Python AST; binding unresolved",
+      "rule_source": "invariant.rules.sqs_lambda.AWS_SQS_005",
+      "summary": "Queue visibility and Lambda timeout settings were found, but a direct queue-to-consumer binding could not be resolved for these resources. No timeout comparison or mismatch is asserted.",
+      "observed_behavior": "Found 2 queue(s) and 1 Lambda function(s) with explicit timeout settings and no resolved event-source link. These resources may be unrelated; retained evidence lists candidates, not pairs.",
+      "source_behavior": "The queue's visibility period and its consumer's execution limit are separate settings.",
+      "potential_invariant": "If these resources are connected, their processing and retry budgets should preserve business correctness.",
+      "target_question": "Which queue feeds which consumer, and what processing and retry budget must the Azure design preserve?",
+      "why_it_matters": "Comparing unrelated resource timeouts can produce a false finding; a confirmed binding is needed first.",
+      "recommendation": [
+        "Resolve event-source mappings from synthesized infrastructure or deployed configuration.",
+        "For each confirmed pair, compare queue visibility with Lambda timeout and the batching window."
+      ],
+      "validation_scenario": [
+        "Confirm whether the listed queue and Lambda resources are connected.",
+        "For confirmed pairs, measure processing and retry behavior under slow dependencies.",
+        "Verify duplicate processing does not create an unintended duplicate business effect."
+      ],
+      "limitations": "The presence of both settings does not establish a connection or a timeout mismatch.",
+      "evidence": [
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 139,
+          "snippet": "Queue( self, \"FailedJobsDeadLetterQueue\", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, visibility_timeout=Duration.seconds(error_handling_timeout), )",
+          "kind": "queue_definition"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 144,
+          "snippet": "visibility_timeout=Duration.seconds(error_handling_timeout)",
+          "kind": "visibility_timeout"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 238,
+          "snippet": "Queue( self, \"JobsQueue\", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, queue_name=\"jobs_queue\", dead_letter_queue=DeadLetterQueue( max_receive_count=1, queue=self.__failed_jobs_dead_letter_queue, ), retention_period=Duration.seconds(max_event_age), visibility_timeout=Duration.seconds(event_processing_timeout), )",
+          "kind": "queue_definition"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 249,
+          "snippet": "visibility_timeout=Duration.seconds(event_processing_timeout)",
+          "kind": "visibility_timeout"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 198,
+          "snippet": "Function( self, \"ErrorHandlingFunction\", code=Code.from_asset( str( Path(__file__). parent. parent. parent. joinpath(\"error_handling\"). resolve() ), bundling=BundlingOptions( command=[ \"bash\", \"-c\", (\"cp /asset-input/main.py \" \"--target /asset-output \" \"--update\"), ], image=Runtime.PYTHON_3_9.bundling_image, ), ), environment={ \"TABLE_NAME\": self.jobs_table.table_name, \"QUEUE_NAME\": self. __failed",
+          "kind": "lambda_definition"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 236,
+          "snippet": "timeout=Duration.seconds(error_handling_timeout)",
+          "kind": "lambda_timeout"
+        },
+        {
+          "path": "infrastructure/event_processing/main.py",
+          "line": 227,
+          "snippet": "handler=\"main.handler\"",
+          "kind": "lambda_handler"
+        }
+      ]
+    }
+  ],
+  "resource_graph": {
+    "nodes": [
+      {
+        "id": "infrastructure/event_processing/main.py:139:47",
+        "type": "AWS::SQS::Queue",
+        "label": "FailedJobsDeadLetterQueue (infrastructure/event_processing/main.py:139)",
+        "properties": {
+          "visibility_timeout_seconds": null,
+          "timeout_status": "unresolved",
+          "fifo": null
+        },
+        "evidence": [
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 139,
+            "snippet": "Queue( self, \"FailedJobsDeadLetterQueue\", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, visibility_timeout=Duration.seconds(error_handling_timeout), )",
+            "kind": "queue_definition"
+          },
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 144,
+            "snippet": "visibility_timeout=Duration.seconds(error_handling_timeout)",
+            "kind": "visibility_timeout"
+          }
+        ]
+      },
+      {
+        "id": "infrastructure/event_processing/main.py:198:41",
+        "type": "AWS::Lambda::Function",
+        "label": "ErrorHandlingFunction (infrastructure/event_processing/main.py:198)",
+        "properties": {
+          "runtime": "aws_cdk.aws_lambda.Runtime.PYTHON_3_9",
+          "handler": "main.handler",
+          "timeout_seconds": null,
+          "timeout_status": "unresolved"
+        },
+        "evidence": [
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 198,
+            "snippet": "Function( self, \"ErrorHandlingFunction\", code=Code.from_asset( str( Path(__file__). parent. parent. parent. joinpath(\"error_handling\"). resolve() ), bundling=BundlingOptions( command=[ \"bash\", \"-c\", (\"cp /asset-input/main.py \" \"--target /asset-output \" \"--update\"), ], image=Runtime.PYTHON_3_9.bundling_image, ), ), environment={ \"TABLE_NAME\": self.jobs_table.table_name, \"QUEUE_NAME\": self. __failed",
+            "kind": "lambda_definition"
+          },
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 236,
+            "snippet": "timeout=Duration.seconds(error_handling_timeout)",
+            "kind": "lambda_timeout"
+          },
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 227,
+            "snippet": "handler=\"main.handler\"",
+            "kind": "lambda_handler"
+          }
+        ]
+      },
+      {
+        "id": "infrastructure/event_processing/main.py:238:26",
+        "type": "AWS::SQS::Queue",
+        "label": "JobsQueue (infrastructure/event_processing/main.py:238)",
+        "properties": {
+          "visibility_timeout_seconds": null,
+          "timeout_status": "unresolved",
+          "fifo": null
+        },
+        "evidence": [
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 238,
+            "snippet": "Queue( self, \"JobsQueue\", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, queue_name=\"jobs_queue\", dead_letter_queue=DeadLetterQueue( max_receive_count=1, queue=self.__failed_jobs_dead_letter_queue, ), retention_period=Duration.seconds(max_event_age), visibility_timeout=Duration.seconds(event_processing_timeout), )",
+            "kind": "queue_definition"
+          },
+          {
+            "path": "infrastructure/event_processing/main.py",
+            "line": 249,
+            "snippet": "visibility_timeout=Duration.seconds(event_processing_timeout)",
+            "kind": "visibility_timeout"
+          }
+        ]
+      }
+    ],
+    "edges": []
+  },
+  "processing_paths": [],
+  "candidate_risk_chain": "SQS usage and an unlinked DynamoDB write occur in this repository. A shared processing path has not been established for that write; these resources may be unrelated. If the consumer invokes it, validate whether replay creates additional items or replaces state when keys are reused. AWS-SQS-001 and AWS-DDB-001 contribute to this candidate review question, not two independently confirmed failures."
+}
