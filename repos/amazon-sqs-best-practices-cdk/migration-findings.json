@@ -1,0 +1,392 @@
+{
+  "root": "/Users/smanpathak/code/personal/amazon-sqs-best-practices-cdk",
+  "files_scanned": 5,
+  "skipped_files": 1,
+  "offline": true,
+  "assessment_boundaries": [
+    "The scanner analyzes eligible local text files only. It excludes common secret files, credential directories, generated artifacts, VCS metadata, and files containing likely credential material.",
+    "Static analysis cannot determine production traffic, deployment topology, runtime configuration, external-system behavior, business invariants, or operational procedures unless represented in scanned files.",
+    "SQS detection uses Python syntax trees (ASTs) to recognize boto3 and AWS CDK calls with locally resolved imports and bindings. It does not resolve cross-file aliases, runtime factories, control flow, instance attributes, or configuration passed through variables or **kwargs. Other languages and unparseable Python are outside these rules' coverage.",
+    "Queue/Lambda timeout correlation supports Python CDK Queue and Function constructs and explicit event-source links in the same file. Numeric comparisons require literal Duration.seconds, minutes, or hours values. Missing defaults, dynamic expressions, conditional resource definitions, and deployed settings are not inferred. Unbound configurations are review candidates, not evidence that the resources communicate.",
+    "DynamoDB detection uses text-pattern heuristics, without resolving call receivers or proving that matched controls apply to a write. A missing finding does not establish workload safety.",
+    "Processing paths require an explicit Python Lambda runtime and resolve literal CDK Code.from_asset and handler settings against eligible files inside the scan root. Only direct boto3 DynamoDB PutItem calls in the configured handler are linked; helper calls, dynamic assets, dependency injection, and deployed behavior remain unresolved. Omitted queue FIFO settings and Lambda timeouts are not inferred."
+  ],
+  "findings": [
+    {
+      "rule_id": "AWS-DDB-001",
+      "title": "DynamoDB PutItem replay and overwrite behavior requires validation",
+      "category": "Data",
+      "severity": "medium",
+      "confidence": "low",
+      "detection": "Text-pattern heuristic",
+      "rule_source": "invariant.rules.dynamodb.AWS_DDB_001",
+      "summary": "A DynamoDB-style PutItem call was detected. If events can be retried, duplicated, or arrive out of order, validate replay behavior and whether a write using an existing primary key may replace the stored item. Calls that generate new keys instead require review for unintended additional records. This is a migration review question; intended ordering and idempotency design are not established. No conditional-write or optimistic-concurrency pattern was detected in scanned text; this is a review question, not proof that controls do not exist elsewhere.",
+      "observed_behavior": "The scanner matched DynamoDB-style write calls in source text. No conditional-write or version-related text was matched; controls may exist outside these patterns.",
+      "source_behavior": "PutItem creates an item or replaces the item with the same primary key; conditional expressions can restrict the write. Different keys can create additional items. A call alone does not establish the business rule.",
+      "potential_invariant": "A duplicate or older logical event must not replace newer intended state unless last-writer-wins is the explicit business rule. Reprocessing with a new key should not create an unintended additional record.",
+      "target_question": "If Azure Cosmos DB is selected as the target datastore, how will its design preserve correctness for concurrent, duplicate, retried, or reordered writes?",
+      "why_it_matters": "Data persistence does not automatically preserve a workload's source conflict model.",
+      "recommendation": [
+        "Establish whether item keys represent a logical event, an entity, or a new record per processing pass.",
+        "Write business invariants explicitly.",
+        "Classify updates as additive, absolute, or versioned.",
+        "Choose optimistic concurrency, transaction, or serialization strategy.",
+        "Align partition design with transaction boundaries."
+      ],
+      "validation_scenario": [
+        "Send overlapping updates for the same entity.",
+        "Inject retries and duplicate delivery.",
+        "Replay an older update after a newer update.",
+        "Verify invariants."
+      ],
+      "limitations": "Matched writes do not establish the full data model, conflict rules, or transaction boundaries.",
+      "evidence": [
+        {
+          "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+          "line": 34,
+          "snippet": "dynamodb_client.put_item(TableName=table_name, Item=item)",
+          "kind": "ddb_write_put"
+        }
+      ]
+    },
+    {
+      "rule_id": "AWS-SQS-001",
+      "title": "Review SQS consumers for duplicate-delivery safety",
+      "category": "Messaging",
+      "severity": "medium",
+      "confidence": "medium",
+      "detection": "Python AST",
+      "rule_source": "invariant.rules.sqs.AWS_SQS_001",
+      "summary": "A resolved SQS-triggered Lambda handler contains a direct DynamoDB PutItem call. Validate that duplicate, retried, or reordered records do not create unintended items or replace intended state when keys are reused. The source path does not establish actual execution or an unsafe business effect.",
+      "observed_behavior": "Resolved source paths: InventoryUpdatesQueue (sqs_blog/sqs_blog_stack.py:50) \u2192 SQSToDynamoDBFunction (sqs_blog/sqs_blog_stack.py:145) \u2192 sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler \u2192 DynamoDB PutItem. Item identity, external controls, and business semantics remain unverified.",
+      "source_behavior": "SQS standard queues use at-least-once delivery. Messages that are not deleted before visibility expires can become available again.",
+      "potential_invariant": "Reprocessing the same logical message should not create an unintended duplicate business effect.",
+      "target_question": "For Azure Service Bus, how will the consumer identify and safely handle a message redelivered after a partial failure?",
+      "why_it_matters": "At-least-once delivery can repeat work after transient failure and create duplicate writes or external side effects.",
+      "recommendation": [
+        "Attach a stable event identifier to each logical work item.",
+        "Use durable idempotency or deduplication.",
+        "Document whether operations are additive, absolute-state-based, or versioned."
+      ],
+      "validation_scenario": [
+        "Persist a business-state change.",
+        "Force handler failure before message completion.",
+        "Allow re-delivery.",
+        "Verify duplicate processing does not create an unintended duplicate business effect."
+      ],
+      "limitations": "This rule does not establish missing idempotency controls, ordering of business writes and message deletion, or runtime retry policy.",
+      "evidence": [
+        {
+          "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+          "line": 6,
+          "snippet": "def lambda_handler(event, context):",
+          "kind": "lambda_handler_definition"
+        },
+        {
+          "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+          "line": 34,
+          "snippet": "dynamodb_client.put_item(TableName=table_name, Item=item)",
+          "kind": "ddb_put_item"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 50,
+          "snippet": "sqs.Queue( self, \"InventoryUpdatesQueue\", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )",
+          "kind": "queue_definition"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 52,
+          "snippet": "visibility_timeout=Duration.seconds(300)",
+          "kind": "visibility_timeout"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 145,
+          "snippet": "_lambda.Function( self, \"SQSToDynamoDBFunction\", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )",
+          "kind": "lambda_definition"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 148,
+          "snippet": "code=_lambda.Code.from_asset('sqs_blog/lambda')",
+          "kind": "lambda_code_asset"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 149,
+          "snippet": "handler='SQSToDynamoDBFunction.lambda_handler'",
+          "kind": "lambda_handler"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 162,
+          "snippet": "sqs_to_dynamodb_function .add_event_source_mapping( \"MyQueueTrigger\", event_source_arn=queue.queue_arn, batch_size=10 )",
+          "kind": "sqs_lambda_binding"
+        }
+      ]
+    },
+    {
+      "rule_id": "AWS-SQS-002",
+      "title": "Explicit SQS visibility timeout requires target lock-duration mapping",
+      "category": "Messaging",
+      "severity": "medium",
+      "confidence": "medium",
+      "detection": "Python AST",
+      "rule_source": "invariant.rules.sqs.AWS_SQS_002",
+      "summary": "Explicit SQS visibility-timeout configuration was detected. If Azure Service Bus is selected, map this timing behavior to lock duration, lock renewal, retry policy, and the target consumer's processing budget. The setting alone does not establish sufficient or insufficient time.",
+      "observed_behavior": "The scanner found explicit visibility-timeout arguments or literal attributes in recognized SQS calls. The evidence below preserves the configured expressions; runtime values are not evaluated.",
+      "source_behavior": "After receipt, SQS hides a message for the visibility period. If it is not deleted before that period expires, it can be received again. Visibility does not guarantee that duplicates cannot occur during the period. A timeout of zero makes the message immediately visible.",
+      "potential_invariant": "If the workload requires exclusive processing, a message should not be processed concurrently while its original consumer is still legitimately processing it. Any overlap should preserve business correctness.",
+      "target_question": "Will Azure Service Bus lock duration and renewal cover normal and degraded processing?",
+      "why_it_matters": "Lock expiry can make a message available again and cause concurrent or duplicate processing.",
+      "recommendation": [
+        "Measure normal and degraded processing duration.",
+        "Include retries and dependency latency in timing budgets.",
+        "Configure and test lock duration and renewal."
+      ],
+      "validation_scenario": [
+        "Delay a handler past the target lock duration.",
+        "Observe whether the message becomes available again.",
+        "Verify concurrent handling preserves business invariants."
+      ],
+      "limitations": "An explicit timeout does not establish that its duration is sufficient or that exclusive processing is required.",
+      "evidence": [
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 44,
+          "snippet": "visibility_timeout=Duration.seconds(300)",
+          "kind": "visibility_timeout"
+        },
+        {
+          "path": "sqs_blog/sqs_blog_stack.py",
+          "line": 52,
+          "snippet": "visibility_timeout=Duration.seconds(300)",
+          "kind": "visibility_timeout"
+        }
+      ]
+    }
+  ],
+  "resource_graph": {
+    "nodes": [
+      {
+        "id": "sqs_blog/sqs_blog_stack.py:43:14",
+        "type": "AWS::SQS::Queue",
+        "label": "InventoryUpdatesDlq (sqs_blog/sqs_blog_stack.py:43)",
+        "properties": {
+          "visibility_timeout_seconds": 300.0,
+          "timeout_status": "resolved",
+          "fifo": null
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 43,
+            "snippet": "sqs.Queue(self, 'InventoryUpdatesDlq', visibility_timeout=Duration.seconds(300) )",
+            "kind": "queue_definition"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 44,
+            "snippet": "visibility_timeout=Duration.seconds(300)",
+            "kind": "visibility_timeout"
+          }
+        ]
+      },
+      {
+        "id": "sqs_blog/sqs_blog_stack.py:50:16",
+        "type": "AWS::SQS::Queue",
+        "label": "InventoryUpdatesQueue (sqs_blog/sqs_blog_stack.py:50)",
+        "properties": {
+          "visibility_timeout_seconds": 300.0,
+          "timeout_status": "resolved",
+          "fifo": null
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 50,
+            "snippet": "sqs.Queue( self, \"InventoryUpdatesQueue\", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )",
+            "kind": "queue_definition"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 52,
+            "snippet": "visibility_timeout=Duration.seconds(300)",
+            "kind": "visibility_timeout"
+          }
+        ]
+      },
+      {
+        "id": "sqs_blog/sqs_blog_stack.py:83:42",
+        "type": "AWS::Lambda::Function",
+        "label": "CSVProcessingToSQSFunction (sqs_blog/sqs_blog_stack.py:83)",
+        "properties": {
+          "runtime": "aws_cdk.aws_lambda.Runtime.PYTHON_3_8",
+          "handler": "CSVProcessingToSQSFunction.lambda_handler",
+          "code_asset": "sqs_blog/lambda",
+          "timeout_seconds": null,
+          "timeout_status": "absent"
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 83,
+            "snippet": "_lambda.Function(self, 'CSVProcessingToSQSFunction', runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='CSVProcessingToSQSFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE )",
+            "kind": "lambda_definition"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 86,
+            "snippet": "handler='CSVProcessingToSQSFunction.lambda_handler'",
+            "kind": "lambda_handler"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 85,
+            "snippet": "code=_lambda.Code.from_asset('sqs_blog/lambda')",
+            "kind": "lambda_code_asset"
+          }
+        ]
+      },
+      {
+        "id": "sqs_blog/sqs_blog_stack.py:145:36",
+        "type": "AWS::Lambda::Function",
+        "label": "SQSToDynamoDBFunction (sqs_blog/sqs_blog_stack.py:145)",
+        "properties": {
+          "runtime": "aws_cdk.aws_lambda.Runtime.PYTHON_3_8",
+          "handler": "SQSToDynamoDBFunction.lambda_handler",
+          "code_asset": "sqs_blog/lambda",
+          "timeout_seconds": null,
+          "timeout_status": "absent"
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 145,
+            "snippet": "_lambda.Function( self, \"SQSToDynamoDBFunction\", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )",
+            "kind": "lambda_definition"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 149,
+            "snippet": "handler='SQSToDynamoDBFunction.lambda_handler'",
+            "kind": "lambda_handler"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 148,
+            "snippet": "code=_lambda.Code.from_asset('sqs_blog/lambda')",
+            "kind": "lambda_code_asset"
+          }
+        ]
+      },
+      {
+        "id": "sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler",
+        "type": "Python::Handler",
+        "label": "sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler",
+        "properties": {
+          "file": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+          "entry_point": "lambda_handler"
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+            "line": 6,
+            "snippet": "def lambda_handler(event, context):",
+            "kind": "lambda_handler_definition"
+          }
+        ]
+      },
+      {
+        "id": "sqs_blog/lambda/SQSToDynamoDBFunction.py:34:8:put_item",
+        "type": "AWS::DynamoDB::PutItem",
+        "label": "DynamoDB PutItem",
+        "properties": {
+          "condition_expression": "absent",
+          "item_identity": "unresolved"
+        },
+        "evidence": [
+          {
+            "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+            "line": 34,
+            "snippet": "dynamodb_client.put_item(TableName=table_name, Item=item)",
+            "kind": "ddb_put_item"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "sqs_blog/sqs_blog_stack.py:50:16",
+        "target": "sqs_blog/sqs_blog_stack.py:145:36",
+        "type": "event_source_mapping",
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 162,
+            "snippet": "sqs_to_dynamodb_function .add_event_source_mapping( \"MyQueueTrigger\", event_source_arn=queue.queue_arn, batch_size=10 )",
+            "kind": "sqs_lambda_binding"
+          }
+        ],
+        "properties": {
+          "batch_size": 10
+        }
+      },
+      {
+        "source": "sqs_blog/sqs_blog_stack.py:145:36",
+        "target": "sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler",
+        "type": "handler_entry_point",
+        "evidence": [
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 145,
+            "snippet": "_lambda.Function( self, \"SQSToDynamoDBFunction\", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )",
+            "kind": "lambda_definition"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 149,
+            "snippet": "handler='SQSToDynamoDBFunction.lambda_handler'",
+            "kind": "lambda_handler"
+          },
+          {
+            "path": "sqs_blog/sqs_blog_stack.py",
+            "line": 148,
+            "snippet": "code=_lambda.Code.from_asset('sqs_blog/lambda')",
+            "kind": "lambda_code_asset"
+          }
+        ],
+        "properties": {}
+      },
+      {
+        "source": "sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler",
+        "target": "sqs_blog/lambda/SQSToDynamoDBFunction.py:34:8:put_item",
+        "type": "direct_call",
+        "evidence": [
+          {
+            "path": "sqs_blog/lambda/SQSToDynamoDBFunction.py",
+            "line": 34,
+            "snippet": "dynamodb_client.put_item(TableName=table_name, Item=item)",
+            "kind": "ddb_put_item"
+          }
+        ],
+        "properties": {}
+      }
+    ]
+  },
+  "processing_paths": [
+    {
+      "queue": "sqs_blog/sqs_blog_stack.py:50:16",
+      "function": "sqs_blog/sqs_blog_stack.py:145:36",
+      "handler": "sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler",
+      "write": "sqs_blog/lambda/SQSToDynamoDBFunction.py:34:8:put_item",
+      "confidence": "medium",
+      "contributing_rules": [
+        "AWS-SQS-001",
+        "AWS-DDB-001"
+      ]
+    }
+  ],
+  "candidate_risk_chain": null
+}
