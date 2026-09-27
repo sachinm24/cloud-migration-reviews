@@ -1,12 +1,9 @@
-# AWS to Azure Migration Semantic-Risk Review
+# AWS-to-Azure Migration Semantic-Risk Review
 
 ## Executive summary
 
-This report was generated locally from static analysis of:
-
-```text
-/Users/smanpathak/code/personal/amazon-sqs-best-practices-cdk
-```
+Source repository: [aws-samples/amazon-sqs-best-practices-cdk](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/tree/54143c7efd610b2345964951403bbde628f54ba0)  
+Reviewed commit: `54143c7efd610b2345964951403bbde628f54ba0`
 
 Scan date: 2026-09-27  
 Offline mode: enabled  
@@ -76,14 +73,14 @@ Validate whether replay creates another item, or replaces intended state when ke
 
 | Location | Type | Matched text |
 |---|---|---|
-| `sqs_blog/lambda/SQSToDynamoDBFunction.py:6` | lambda_handler_definition | `def lambda_handler(event, context):` |
-| `sqs_blog/lambda/SQSToDynamoDBFunction.py:34` | ddb_put_item | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
-| `sqs_blog/sqs_blog_stack.py:50` | queue_definition | `sqs.Queue( self, "InventoryUpdatesQueue", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )` |
-| `sqs_blog/sqs_blog_stack.py:52` | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
-| `sqs_blog/sqs_blog_stack.py:145` | lambda_definition | `_lambda.Function( self, "SQSToDynamoDBFunction", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )` |
-| `sqs_blog/sqs_blog_stack.py:148` | lambda_code_asset | `code=_lambda.Code.from_asset('sqs_blog/lambda')` |
-| `sqs_blog/sqs_blog_stack.py:149` | lambda_handler | `handler='SQSToDynamoDBFunction.lambda_handler'` |
-| `sqs_blog/sqs_blog_stack.py:162` | sqs_lambda_binding | `sqs_to_dynamodb_function .add_event_source_mapping( "MyQueueTrigger", event_source_arn=queue.queue_arn, batch_size=10 )` |
+| [`sqs_blog/lambda/SQSToDynamoDBFunction.py:6`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/lambda/SQSToDynamoDBFunction.py#L6) | lambda_handler_definition | `def lambda_handler(event, context):` |
+| [`sqs_blog/lambda/SQSToDynamoDBFunction.py:34`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/lambda/SQSToDynamoDBFunction.py#L34) | ddb_put_item | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
+| [`sqs_blog/sqs_blog_stack.py:50`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L50) | queue_definition | `sqs.Queue( self, "InventoryUpdatesQueue", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )` |
+| [`sqs_blog/sqs_blog_stack.py:52`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L52) | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
+| [`sqs_blog/sqs_blog_stack.py:145`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L145) | lambda_definition | `_lambda.Function( self, "SQSToDynamoDBFunction", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )` |
+| [`sqs_blog/sqs_blog_stack.py:148`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L148) | lambda_code_asset | `code=_lambda.Code.from_asset('sqs_blog/lambda')` |
+| [`sqs_blog/sqs_blog_stack.py:149`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L149) | lambda_handler | `handler='SQSToDynamoDBFunction.lambda_handler'` |
+| [`sqs_blog/sqs_blog_stack.py:162`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L162) | sqs_lambda_binding | `sqs_to_dynamodb_function .add_event_source_mapping( "MyQueueTrigger", event_source_arn=queue.queue_arn, batch_size=10 )` |
 
 ## AWS-DDB-001 — DynamoDB PutItem replay and overwrite behavior requires validation
 
@@ -107,7 +104,7 @@ The scanner matched DynamoDB-style write calls in source text. No conditional-wr
 
 | Location | Type | Matched text |
 |---|---|---|
-| `sqs_blog/lambda/SQSToDynamoDBFunction.py:34` | ddb_write_put | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
+| [`sqs_blog/lambda/SQSToDynamoDBFunction.py:34`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/lambda/SQSToDynamoDBFunction.py#L34) | ddb_write_put | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
 
 ### Source behavior
 
@@ -166,14 +163,14 @@ Resolved source paths: InventoryUpdatesQueue (sqs_blog/sqs_blog_stack.py:50) →
 
 | Location | Type | Matched text |
 |---|---|---|
-| `sqs_blog/lambda/SQSToDynamoDBFunction.py:6` | lambda_handler_definition | `def lambda_handler(event, context):` |
-| `sqs_blog/lambda/SQSToDynamoDBFunction.py:34` | ddb_put_item | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
-| `sqs_blog/sqs_blog_stack.py:50` | queue_definition | `sqs.Queue( self, "InventoryUpdatesQueue", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )` |
-| `sqs_blog/sqs_blog_stack.py:52` | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
-| `sqs_blog/sqs_blog_stack.py:145` | lambda_definition | `_lambda.Function( self, "SQSToDynamoDBFunction", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )` |
-| `sqs_blog/sqs_blog_stack.py:148` | lambda_code_asset | `code=_lambda.Code.from_asset('sqs_blog/lambda')` |
-| `sqs_blog/sqs_blog_stack.py:149` | lambda_handler | `handler='SQSToDynamoDBFunction.lambda_handler'` |
-| `sqs_blog/sqs_blog_stack.py:162` | sqs_lambda_binding | `sqs_to_dynamodb_function .add_event_source_mapping( "MyQueueTrigger", event_source_arn=queue.queue_arn, batch_size=10 )` |
+| [`sqs_blog/lambda/SQSToDynamoDBFunction.py:6`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/lambda/SQSToDynamoDBFunction.py#L6) | lambda_handler_definition | `def lambda_handler(event, context):` |
+| [`sqs_blog/lambda/SQSToDynamoDBFunction.py:34`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/lambda/SQSToDynamoDBFunction.py#L34) | ddb_put_item | `dynamodb_client.put_item(TableName=table_name, Item=item)` |
+| [`sqs_blog/sqs_blog_stack.py:50`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L50) | queue_definition | `sqs.Queue( self, "InventoryUpdatesQueue", visibility_timeout=Duration.seconds(300), #encryption=sqs.QueueEncryption.KMS_MANAGED, dead_letter_queue=sqs.DeadLetterQueue( max_receive_count=5, # Number of retries before sending the message to the DLQ queue=dlq ) )` |
+| [`sqs_blog/sqs_blog_stack.py:52`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L52) | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
+| [`sqs_blog/sqs_blog_stack.py:145`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L145) | lambda_definition | `_lambda.Function( self, "SQSToDynamoDBFunction", runtime=_lambda.Runtime.PYTHON_3_8, code=_lambda.Code.from_asset('sqs_blog/lambda'), handler='SQSToDynamoDBFunction.lambda_handler', role=role, tracing=Tracing.ACTIVE # Enable active tracing with X-Ray )` |
+| [`sqs_blog/sqs_blog_stack.py:148`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L148) | lambda_code_asset | `code=_lambda.Code.from_asset('sqs_blog/lambda')` |
+| [`sqs_blog/sqs_blog_stack.py:149`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L149) | lambda_handler | `handler='SQSToDynamoDBFunction.lambda_handler'` |
+| [`sqs_blog/sqs_blog_stack.py:162`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L162) | sqs_lambda_binding | `sqs_to_dynamodb_function .add_event_source_mapping( "MyQueueTrigger", event_source_arn=queue.queue_arn, batch_size=10 )` |
 
 ### Source behavior
 
@@ -230,8 +227,8 @@ The scanner found explicit visibility-timeout arguments or literal attributes in
 
 | Location | Type | Matched text |
 |---|---|---|
-| `sqs_blog/sqs_blog_stack.py:44` | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
-| `sqs_blog/sqs_blog_stack.py:52` | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
+| [`sqs_blog/sqs_blog_stack.py:44`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L44) | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
+| [`sqs_blog/sqs_blog_stack.py:52`](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/blob/54143c7efd610b2345964951403bbde628f54ba0/sqs_blog/sqs_blog_stack.py#L52) | visibility_timeout | `visibility_timeout=Duration.seconds(300)` |
 
 ### Source behavior
 

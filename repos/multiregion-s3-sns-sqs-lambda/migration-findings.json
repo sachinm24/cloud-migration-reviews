@@ -1,5 +1,5 @@
 {
-  "root": "/Users/smanpathak/code/personal/multiregion-s3-sns-sqs-lambda",
+  "root": ".",
   "files_scanned": 9,
   "skipped_files": 0,
   "offline": true,
@@ -87,18 +87,6 @@
           "line": 70,
           "snippet": "sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)",
           "kind": "sqs_delete"
-        },
-        {
-          "path": "services/UserApplication-ProcessSQSandS3Messages/lambda_function.py",
-          "line": 39,
-          "snippet": "sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)",
-          "kind": "sqs_delete"
-        },
-        {
-          "path": "services/UserApplication-ProcessSQSandS3Messages/lambda_function.py",
-          "line": 70,
-          "snippet": "sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)",
-          "kind": "sqs_delete"
         }
       ]
     }
@@ -108,5 +96,7 @@
     "edges": []
   },
   "processing_paths": [],
-  "candidate_risk_chain": "SQS usage and an unlinked DynamoDB write occur in this repository. A shared processing path has not been established for that write; these resources may be unrelated. If the consumer invokes it, validate whether replay creates additional items or replaces state when keys are reused. AWS-SQS-001 and AWS-DDB-001 contribute to this candidate review question, not two independently confirmed failures."
+  "candidate_risk_chain": "SQS usage and an unlinked DynamoDB write occur in this repository. A shared processing path has not been established for that write; these resources may be unrelated. If the consumer invokes it, validate whether replay creates additional items or replaces state when keys are reused. AWS-SQS-001 and AWS-DDB-001 contribute to this candidate review question, not two independently confirmed failures.",
+  "source_repository": "https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda",
+  "source_revision": "e596ad0f05ec19891c2bd12a1cf0d44edbc2786f"
 }

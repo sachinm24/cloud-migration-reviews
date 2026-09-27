@@ -1,12 +1,9 @@
-# AWS to Azure Migration Semantic-Risk Review
+# AWS-to-Azure Migration Semantic-Risk Review
 
 ## Executive summary
 
-This report was generated locally from static analysis of:
-
-```text
-/Users/smanpathak/code/personal/asynchronous-event-processing-api-gateway-sqs-cdk
-```
+Source repository: [aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/tree/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d)  
+Reviewed commit: `7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d`
 
 Scan date: 2026-09-27  
 Offline mode: enabled  
@@ -91,12 +88,8 @@ The scanner matched DynamoDB-style write calls in source text. Conditional-write
 
 | Location | Type | Matched text |
 |---|---|---|
-| `error_handling/main.py:32` | ddb_write_put | `dynamodb.put_item(` |
-| `event_processing/main.py:72` | ddb_write_put | `dynamodb.put_item(` |
-| `.projen/deps.json:41` | ddb_version | `"version": "0.67.3",` |
-| `.projen/deps.json:58` | ddb_version | `"version": "2.61.0",` |
-| `.projen/deps.json:63` | ddb_version | `"version": "^10.0.5",` |
-| `.projen/deps.json:68` | ddb_version | `"version": "6.2.1",` |
+| [`error_handling/main.py:32`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/error_handling/main.py#L32) | ddb_write_put | `dynamodb.put_item(` |
+| [`event_processing/main.py:72`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/event_processing/main.py#L72) | ddb_write_put | `dynamodb.put_item(` |
 
 ### Source behavior
 
@@ -131,7 +124,7 @@ Data persistence does not automatically preserve a workload's source conflict mo
 
 ### Limitations
 
-Matched writes do not establish the full data model, conflict rules, or transaction boundaries.
+Matched writes do not establish the full data model, conflict rules, or transaction boundaries. A text-pattern match in `.projen/deps.json` was excluded because dependency-version metadata is not application evidence.
 
 ## AWS-SQS-001 — Review SQS consumers for duplicate-delivery safety
 
@@ -155,9 +148,9 @@ The scanner detected SQS receive calls or SQS event-source configuration. Idempo
 
 | Location | Type | Matched text |
 |---|---|---|
-| `event_processing/main.py:93` | sqs_receive | `response = sqs_client.receive_message(` |
-| `infrastructure/event_processing/main.py:312` | sqs_event_source | `SqsEventSource(self.__failed_jobs_dead_letter_queue))` |
-| `event_processing/main.py:104` | sqs_delete | `sqs_client.delete_message(` |
+| [`event_processing/main.py:93`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/event_processing/main.py#L93) | sqs_receive | `response = sqs_client.receive_message(` |
+| [`infrastructure/event_processing/main.py:312`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L312) | sqs_event_source | `SqsEventSource(self.__failed_jobs_dead_letter_queue))` |
+| [`event_processing/main.py:104`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/event_processing/main.py#L104) | sqs_delete | `sqs_client.delete_message(` |
 
 ### Source behavior
 
@@ -214,8 +207,8 @@ The scanner found explicit visibility-timeout arguments or literal attributes in
 
 | Location | Type | Matched text |
 |---|---|---|
-| `infrastructure/event_processing/main.py:144` | visibility_timeout | `visibility_timeout=Duration.seconds(error_handling_timeout)` |
-| `infrastructure/event_processing/main.py:249` | visibility_timeout | `visibility_timeout=Duration.seconds(event_processing_timeout)` |
+| [`infrastructure/event_processing/main.py:144`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L144) | visibility_timeout | `visibility_timeout=Duration.seconds(error_handling_timeout)` |
+| [`infrastructure/event_processing/main.py:249`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L249) | visibility_timeout | `visibility_timeout=Duration.seconds(event_processing_timeout)` |
 
 ### Source behavior
 
@@ -271,13 +264,13 @@ Found 2 queue(s) and 1 Lambda function(s) with explicit timeout settings and no 
 
 | Location | Type | Matched text |
 |---|---|---|
-| `infrastructure/event_processing/main.py:139` | queue_definition | `Queue( self, "FailedJobsDeadLetterQueue", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, visibility_timeout=Duration.seconds(error_handling_timeout), )` |
-| `infrastructure/event_processing/main.py:144` | visibility_timeout | `visibility_timeout=Duration.seconds(error_handling_timeout)` |
-| `infrastructure/event_processing/main.py:238` | queue_definition | `Queue( self, "JobsQueue", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, queue_name="jobs_queue", dead_letter_queue=DeadLetterQueue( max_receive_count=1, queue=self.__failed_jobs_dead_letter_queue, ), retention_period=Duration.seconds(max_event_age), visibility_timeout=Duration.seconds(event_processing_timeout), )` |
-| `infrastructure/event_processing/main.py:249` | visibility_timeout | `visibility_timeout=Duration.seconds(event_processing_timeout)` |
-| `infrastructure/event_processing/main.py:198` | lambda_definition | `Function( self, "ErrorHandlingFunction", code=Code.from_asset( str( Path(__file__). parent. parent. parent. joinpath("error_handling"). resolve() ), bundling=BundlingOptions( command=[ "bash", "-c", ("cp /asset-input/main.py " "--target /asset-output " "--update"), ], image=Runtime.PYTHON_3_9.bundling_image, ), ), environment={ "TABLE_NAME": self.jobs_table.table_name, "QUEUE_NAME": self. __failed` |
-| `infrastructure/event_processing/main.py:236` | lambda_timeout | `timeout=Duration.seconds(error_handling_timeout)` |
-| `infrastructure/event_processing/main.py:227` | lambda_handler | `handler="main.handler"` |
+| [`infrastructure/event_processing/main.py:139`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L139) | queue_definition | `Queue( self, "FailedJobsDeadLetterQueue", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, visibility_timeout=Duration.seconds(error_handling_timeout), )` |
+| [`infrastructure/event_processing/main.py:144`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L144) | visibility_timeout | `visibility_timeout=Duration.seconds(error_handling_timeout)` |
+| [`infrastructure/event_processing/main.py:238`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L238) | queue_definition | `Queue( self, "JobsQueue", encryption=QueueEncryption.KMS, encryption_master_key=self.__jobs_queue_key, queue_name="jobs_queue", dead_letter_queue=DeadLetterQueue( max_receive_count=1, queue=self.__failed_jobs_dead_letter_queue, ), retention_period=Duration.seconds(max_event_age), visibility_timeout=Duration.seconds(event_processing_timeout), )` |
+| [`infrastructure/event_processing/main.py:249`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L249) | visibility_timeout | `visibility_timeout=Duration.seconds(event_processing_timeout)` |
+| [`infrastructure/event_processing/main.py:198`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L198) | lambda_definition | `Function( self, "ErrorHandlingFunction", code=Code.from_asset( str( Path(__file__). parent. parent. parent. joinpath("error_handling"). resolve() ), bundling=BundlingOptions( command=[ "bash", "-c", ("cp /asset-input/main.py " "--target /asset-output " "--update"), ], image=Runtime.PYTHON_3_9.bundling_image, ), ), environment={ "TABLE_NAME": self.jobs_table.table_name, "QUEUE_NAME": self. __failed` |
+| [`infrastructure/event_processing/main.py:236`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L236) | lambda_timeout | `timeout=Duration.seconds(error_handling_timeout)` |
+| [`infrastructure/event_processing/main.py:227`](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/blob/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d/infrastructure/event_processing/main.py#L227) | lambda_handler | `handler="main.handler"` |
 
 ### Source behavior
 

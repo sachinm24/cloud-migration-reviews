@@ -1,12 +1,9 @@
-# AWS to Azure Migration Semantic-Risk Review
+# AWS-to-Azure Migration Semantic-Risk Review
 
 ## Executive summary
 
-This report was generated locally from static analysis of:
-
-```text
-/Users/smanpathak/code/personal/multiregion-s3-sns-sqs-lambda
-```
+Source repository: [aws-samples/multiregion-s3-sns-sqs-lambda](https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda/tree/e596ad0f05ec19891c2bd12a1cf0d44edbc2786f)  
+Reviewed commit: `e596ad0f05ec19891c2bd12a1cf0d44edbc2786f`
 
 Scan date: 2026-09-27  
 Offline mode: enabled  
@@ -89,7 +86,7 @@ The scanner matched DynamoDB-style write calls in source text. No conditional-wr
 
 | Location | Type | Matched text |
 |---|---|---|
-| `services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:63` | ddb_write_put | `data = dynamodb.put_item(` |
+| [`services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:63`](https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda/blob/e596ad0f05ec19891c2bd12a1cf0d44edbc2786f/services/UserApplication-ProcessSQSandS3Messages/lambda_function.py#L63) | ddb_write_put | `data = dynamodb.put_item(` |
 
 ### Source behavior
 
@@ -148,10 +145,8 @@ The scanner detected SQS usage or configuration; this does not establish that a 
 
 | Location | Type | Matched text |
 |---|---|---|
-| `services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:39` | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
-| `services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:70` | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
-| `services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:39` | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
-| `services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:70` | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
+| [`services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:39`](https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda/blob/e596ad0f05ec19891c2bd12a1cf0d44edbc2786f/services/UserApplication-ProcessSQSandS3Messages/lambda_function.py#L39) | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
+| [`services/UserApplication-ProcessSQSandS3Messages/lambda_function.py:70`](https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda/blob/e596ad0f05ec19891c2bd12a1cf0d44edbc2786f/services/UserApplication-ProcessSQSandS3Messages/lambda_function.py#L70) | sqs_delete | `sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)` |
 
 ### Source behavior
 

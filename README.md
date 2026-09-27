@@ -1,121 +1,38 @@
+# Cloud Migration Reviews
+
+Independent, source-based reviews of public AWS projects through the lens of
+AWS-to-Azure migration. The reviews focus on application behavior and the
+invariants a migration should preserve, rather than one-to-one service mapping.
+
+These are static-analysis reviews, not production audits. Findings are review
+questions; they do not establish a defect or prove that a project is unsafe.
+The reports distinguish direct source evidence from inferred relationships and
+state the analyzer's coverage limits.
+
+## Reviews
+
+| Project | Source revision | Scope and result | Report |
+|---|---|---|---|
+| [amazon-sqs-best-practices-cdk](https://github.com/aws-samples/amazon-sqs-best-practices-cdk/tree/54143c7efd610b2345964951403bbde628f54ba0) | `54143c7` | AWS sample; resolved SQS → Lambda → DynamoDB path; 3 review findings | [Report](repos/amazon-sqs-best-practices-cdk/migration-readiness-report.md) · [JSON](repos/amazon-sqs-best-practices-cdk/migration-findings.json) |
+| [asynchronous-event-processing-api-gateway-sqs-cdk](https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk/tree/7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d) | `7c25cbd` | AWS sample; SQS/Fargate workflow; includes unresolved resource candidates and heuristic matches | [Report](repos/asynchronous-event-processing-api-gateway-sqs-cdk/migration-readiness-report.md) · [JSON](repos/asynchronous-event-processing-api-gateway-sqs-cdk/migration-findings.json) |
+| [multiregion-s3-sns-sqs-lambda](https://github.com/aws-samples/multiregion-s3-sns-sqs-lambda/tree/e596ad0f05ec19891c2bd12a1cf0d44edbc2786f) | `e596ad0` | AWS sample; S3/SNS/SQS/Lambda workflow; candidate relationships remain unconfirmed | [Report](repos/multiregion-s3-sns-sqs-lambda/migration-readiness-report.md) · [JSON](repos/multiregion-s3-sns-sqs-lambda/migration-findings.json) |
+
+The repositories above are public AWS samples, not a representative sample of
+production customer applications. They demonstrate the review method and its
+current coverage; they do not establish general precision or recall.
+
+## Method
+
+Each report records the upstream commit, scan date, offline status, observed
+source evidence, potential invariant, target-cloud question, validation
+scenario, and limitations. Source code is scanned locally and is not uploaded.
+Manual review is identified separately from automated findings.
+
 ## License
 
-Unless otherwise noted, the original reports, methodology, checklists,
-and documentation in this repository are licensed under the
-[Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
-
-© 2026 Sachin Manpathak.
-
-Third-party code, excerpts, diagrams, and materials remain subject to
-their respective upstream licenses and attribution requirements.
-
-The project name, logos, and other brand features are not licensed for use
-without prior written permission.
-
-# AWS → AzureMigration-Risk Review
-
-## Subject
-
-[aws-samples/amazon-sqs-best-practices-cdk](https://github.com/aws-samples/amazon-sqs-best-practices-cdk)
-
-## Methodology
-
-This review examines the application's use of AWS services and identifies
-behavioral assumptions that may require validation during an AWS → Azure
-migration.
-
-Findings are based on the publicly available source code at the pinned
-revision identified above.
-
-A finding does not mean that the application cannot be migrated to Azure.
-It means that the AWS behavior observed in the application should be
-explicitly evaluated when selecting or implementing the corresponding
-Azure service.
-
-The review focuses on application-level behavior rather than simply
-mapping AWS services to Azure service names.
-
-## Review metadata
-
-| Field | Value |
-|---|---|
-| Upstream repository | `aws-samples/amazon-sqs-best-practices-cdk` |
-| Repository type | Public AWS sample |
-| License | MIT-0 |
-| Migration path | AWS → Azure |
-| Assessment type | Educational public-code review |
-| Scope | S3, Lambda, SQS, DynamoDB, and CDK configuration |
-| Review date | 2026-09-20 |
-| Revision reviewed | Replace with pinned commit SHA before publishing |
-
-## Architecture summary
-
-The sample describes an inventory-management workflow:
-
-```text
-CSV file upload
-      |
-      v
-Amazon S3
-      |
-      v
-Lambda: parse records
-      |
-      v
-Amazon SQS
-      |
-      v
-Lambda: process inventory update
-      |
-      v
-Amazon DynamoDB
-```
-
-One possible Azure service mapping is:
-
-```text
-CSV file upload
-      |
-      v
-Azure Blob Storage
-      |
-      v
-Azure Functions: parse records
-      |
-      v
-Azure Service Bus
-      |
-      v
-Azure Functions: process inventory update
-      |
-      v
-Azure Cosmos DB
-```
-
-This report does not prescribe that target design. It identifies behavioral assumptions that should be validated if this kind of workflow moves from AWS to Azure.
-
-## Key findings
-
-| ID | Severity | Confidence | Finding |
-|---|---|---|---|
-| [AWS-SQS-001](./findings/AWS-SQS-001.md) | High | High | Retry and duplicate-delivery behavior requires an explicit idempotency strategy |
-| [AWS-SQS-002](./findings/AWS-SQS-002.md) | High | Medium | Message visibility / lock duration must cover worst-case processing and retries |
-| [AWS-DDB-001](./findings/AWS-DDB-001.md) | High | High | Inventory-update correctness requires an explicit concurrency and conflict model |
-
-## What this review is not
-
-This is not:
-
-- a complete migration assessment
-- an architectural recommendation
-- a performance benchmark
-- a security assessment
-- a statement that the application will fail on Azure
-
-The findings identify areas where AWS-specific behavior may be
-embedded in the application and therefore deserve investigation
-during migration.
-
-## Report
-
-Read the complete [assessment report](./report.md).
+Unless otherwise noted, original reports, methodology, checklists, and
+documentation in this repository are licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). © 2026 Sachin
+Manpathak. Third-party code and materials remain subject to their upstream
+licenses and attribution requirements. Project names, logos, and other brand
+features are not licensed for use without prior written permission.

@@ -1,5 +1,5 @@
 {
-  "root": "/Users/smanpathak/code/personal/amazon-sqs-best-practices-cdk",
+  "root": ".",
   "files_scanned": 5,
   "skipped_files": 1,
   "offline": true,
@@ -58,7 +58,7 @@
       "detection": "Python AST",
       "rule_source": "invariant.rules.sqs.AWS_SQS_001",
       "summary": "A resolved SQS-triggered Lambda handler contains a direct DynamoDB PutItem call. Validate that duplicate, retried, or reordered records do not create unintended items or replace intended state when keys are reused. The source path does not establish actual execution or an unsafe business effect.",
-      "observed_behavior": "Resolved source paths: InventoryUpdatesQueue (sqs_blog/sqs_blog_stack.py:50) \u2192 SQSToDynamoDBFunction (sqs_blog/sqs_blog_stack.py:145) \u2192 sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler \u2192 DynamoDB PutItem. Item identity, external controls, and business semantics remain unverified.",
+      "observed_behavior": "Resolved source paths: InventoryUpdatesQueue (sqs_blog/sqs_blog_stack.py:50) → SQSToDynamoDBFunction (sqs_blog/sqs_blog_stack.py:145) → sqs_blog/lambda/SQSToDynamoDBFunction.py:lambda_handler → DynamoDB PutItem. Item identity, external controls, and business semantics remain unverified.",
       "source_behavior": "SQS standard queues use at-least-once delivery. Messages that are not deleted before visibility expires can become available again.",
       "potential_invariant": "Reprocessing the same logical message should not create an unintended duplicate business effect.",
       "target_question": "For Azure Service Bus, how will the consumer identify and safely handle a message redelivered after a partial failure?",
@@ -388,5 +388,7 @@
       ]
     }
   ],
-  "candidate_risk_chain": null
+  "candidate_risk_chain": null,
+  "source_repository": "https://github.com/aws-samples/amazon-sqs-best-practices-cdk",
+  "source_revision": "54143c7efd610b2345964951403bbde628f54ba0"
 }

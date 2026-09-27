@@ -1,5 +1,5 @@
 {
-  "root": "/Users/smanpathak/code/personal/asynchronous-event-processing-api-gateway-sqs-cdk",
+  "root": ".",
   "files_scanned": 17,
   "skipped_files": 6,
   "offline": true,
@@ -39,7 +39,7 @@
         "Replay an older update after a newer update.",
         "Verify invariants."
       ],
-      "limitations": "Matched writes do not establish the full data model, conflict rules, or transaction boundaries.",
+      "limitations": "Matched writes do not establish the full data model, conflict rules, or transaction boundaries. A text-pattern match in .projen/deps.json was excluded from this report because dependency-version metadata is not application evidence.",
       "evidence": [
         {
           "path": "error_handling/main.py",
@@ -52,30 +52,6 @@
           "line": 72,
           "snippet": "dynamodb.put_item(",
           "kind": "ddb_write_put"
-        },
-        {
-          "path": ".projen/deps.json",
-          "line": 41,
-          "snippet": "\"version\": \"0.67.3\",",
-          "kind": "ddb_version"
-        },
-        {
-          "path": ".projen/deps.json",
-          "line": 58,
-          "snippet": "\"version\": \"2.61.0\",",
-          "kind": "ddb_version"
-        },
-        {
-          "path": ".projen/deps.json",
-          "line": 63,
-          "snippet": "\"version\": \"^10.0.5\",",
-          "kind": "ddb_version"
-        },
-        {
-          "path": ".projen/deps.json",
-          "line": 68,
-          "snippet": "\"version\": \"6.2.1\",",
-          "kind": "ddb_version"
         }
       ]
     },
@@ -321,5 +297,7 @@
     "edges": []
   },
   "processing_paths": [],
-  "candidate_risk_chain": "SQS usage and an unlinked DynamoDB write occur in this repository. A shared processing path has not been established for that write; these resources may be unrelated. If the consumer invokes it, validate whether replay creates additional items or replaces state when keys are reused. AWS-SQS-001 and AWS-DDB-001 contribute to this candidate review question, not two independently confirmed failures."
+  "candidate_risk_chain": "SQS usage and an unlinked DynamoDB write occur in this repository. A shared processing path has not been established for that write; these resources may be unrelated. If the consumer invokes it, validate whether replay creates additional items or replaces state when keys are reused. AWS-SQS-001 and AWS-DDB-001 contribute to this candidate review question, not two independently confirmed failures.",
+  "source_repository": "https://github.com/aws-samples/asynchronous-event-processing-api-gateway-sqs-cdk",
+  "source_revision": "7c25cbd370a4b945d4479555fd83d2a3c1b9cb6d"
 }
